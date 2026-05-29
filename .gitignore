@@ -1,0 +1,4 @@
+# Large COLMAP outputs — keep out of git (exceed GitHub 100MB limit)
+images.bin
+images.txt
+*.bin
