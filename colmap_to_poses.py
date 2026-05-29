@@ -12,7 +12,7 @@ you want ("where the camera is and how it's oriented"):
 Use --raw to instead dump COLMAP's raw world->camera values unchanged.
 
 Output columns:
-    name, qw, qx, qy, qz, x, y, z
+    image_id, qw, qx, qy, qz, tx, ty, tz, camera_params_id, image_name
 """
 import argparse
 import csv
@@ -60,26 +60,28 @@ def rotmat_to_quat(R):
 
 
 def read_images_txt(path):
-    """Yield (name, qw, qx, qy, qz, tx, ty, tz) for each image."""
+    """Yield (image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, name) per image."""
     with open(path) as f:
         lines = [ln for ln in f if not ln.startswith("#")]
     # Two lines per image: pose line, then POINTS2D line (which we skip).
     for i in range(0, len(lines), 2):
         p = lines[i].split()
+        image_id = int(p[0])
         qw, qx, qy, qz = map(float, p[1:5])
         tx, ty, tz = map(float, p[5:8])
+        camera_id = int(p[8])
         name = p[9]
-        yield name, qw, qx, qy, qz, tx, ty, tz
+        yield image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, name
 
 
 def read_images_bin(path):
-    """Yield (name, qw, qx, qy, qz, tx, ty, tz) for each image."""
+    """Yield (image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, name) per image."""
     with open(path, "rb") as f:
         num_images = struct.unpack("<Q", f.read(8))[0]
         for _ in range(num_images):
-            struct.unpack("<i", f.read(4))[0]  # image_id
+            image_id = struct.unpack("<i", f.read(4))[0]
             qw, qx, qy, qz, tx, ty, tz = struct.unpack("<7d", f.read(56))
-            struct.unpack("<i", f.read(4))[0]  # camera_id
+            camera_id = struct.unpack("<i", f.read(4))[0]
             name = b""
             while True:
                 c = f.read(1)
@@ -88,7 +90,7 @@ def read_images_bin(path):
                 name += c
             num_pts = struct.unpack("<Q", f.read(8))[0]
             f.read(24 * num_pts)  # skip POINTS2D (x, y, point3D_id)
-            yield name.decode(), qw, qx, qy, qz, tx, ty, tz
+            yield image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, name.decode()
 
 
 def main():
@@ -101,21 +103,22 @@ def main():
 
     reader = read_images_bin if args.input.endswith(".bin") else read_images_txt
     rows = []
-    for name, qw, qx, qy, qz, tx, ty, tz in reader(args.input):
+    for image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, name in reader(args.input):
         if args.raw:
-            rows.append([name, qw, qx, qy, qz, tx, ty, tz])
+            rows.append([image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, name])
         else:
             R = quat_to_rotmat(qw, qx, qy, qz)
             t = np.array([tx, ty, tz])
             R_c2w = R.T
             C = -R_c2w @ t
             cqw, cqx, cqy, cqz = rotmat_to_quat(R_c2w)
-            rows.append([name, cqw, cqx, cqy, cqz, C[0], C[1], C[2]])
+            rows.append([image_id, cqw, cqx, cqy, cqz, C[0], C[1], C[2], camera_id, name])
 
     rows.sort(key=lambda r: r[0])
     with open(args.output, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["name", "qw", "qx", "qy", "qz", "x", "y", "z"])
+        w.writerow(["image_id", "qw", "qx", "qy", "qz", "tx", "ty", "tz",
+                    "camera_params_id", "image_name"])
         w.writerows(rows)
     print(f"Wrote {len(rows)} poses to {args.output}")
 

@@ -1,0 +1,31 @@
+# Generated from COLMAP by colmap_to_config.py
+# Fields marked TODO have no source in a COLMAP reconstruction.
+
+# Pose type for initialization (optional, default: EGO_MOTION)
+initial_pose_type: UNKNOWN  # TODO: EGO_MOTION | IDENTITY | UNKNOWN
+
+# Image dimensions - all cameras must use the same resolution
+image_width: 4009
+image_height: 3003
+frequency: 30  # TODO: capture rate, not in COLMAP
+
+# Session to camera params ID mapping (required)
+# TODO: split your captures into sessions; all cameras listed under one.
+session_camera_params_id_mapping:
+  session_0: 1
+
+# Camera parameters (required)
+camera_params:
+  1:
+    sensor_name: camera_1  # TODO: rename (COLMAP id 1, model PINHOLE)
+    # Extrinsic: [QW, QX, QY, QZ, TX, TY, TZ] - camera to rig/vehicle
+    extrinsic: [1, 0, 0, 0, 0, 0, 0]  # identity (reference / single-sensor rig)
+    # Intrinsic: 3x3 [fx,0,cx, 0,fy,cy, 0,0,1]
+    intrinsic: [2334.5814226076, 0, 2004.5, 0, 2334.5814226076, 1501.5, 0, 0, 1]
+    distortion_coefficients: []
+
+# Stereo pair configuration (optional)
+# Each entry: [left_camera_id, right_camera_id, baseline_meters]
+# TODO: no rig with multiple cameras found (single camera).
+# stereo_pair:
+#   - [0, 1, 0.15]
